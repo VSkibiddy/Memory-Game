@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Game with GIFs and Colors</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            background-color: #f0f0f0;
+        }
+
+        td {
+            border: 4px solid black;
+            width: 150px;
+            height: 150px;
+            background-color: #4a90e2;
+            cursor: pointer;
+            position: relative;
+            text-align: center;
+            vertical-align: middle;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        td img {
+            width: 80%; /* Make the GIF smaller */
+            height: 80%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none; /* Hide by default */
+            z-index: 1;
+        }
+
+        td.reveal {
+            background-color: var(--color);
+        }
+
+        td.reveal img {
+            display: block; /* Show GIF when revealed */
+        }
+
+        table {
+            border-collapse: collapse;
+            margin: 20px auto;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h2 {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            td {
+                width: 100px;
+                height: 100px;
+                border: 3px solid black;
+            }
+        }
+
+        @media (max-width: 480px) {
+            td {
+                width: 70px;
+                height: 70px;
+                border: 2px solid black;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            h2 {
+                font-size: 0.9em;
+            }
+        }
+
+        #restartBtn {
+            display: none;
+            margin: 20px auto;
+            padding: 12px 24px;
+            font-size: 16px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #restartBtn:hover {
+            background-color: #357abd;
+        }
+    </style>
+</head>
+
+<body onload="buildGame();">
+    <h2>Memory Game</h2>
+    <table id="board">
+        <tr>
+            <td id="i0" onclick="handleMove(0)"></td>
+            <td id="i1" onclick="handleMove(1)"></td>
+            <td id="i2" onclick="handleMove(2)"></td>
+            <td id="i3" onclick="handleMove(3)"></td>
+        </tr>
+        <tr>
+            <td id="i4" onclick="handleMove(4)"></td>
+            <td id="i5" onclick="handleMove(5)"></td>
+            <td id="i6" onclick="handleMove(6)"></td>
+            <td id="i7" onclick="handleMove(7)"></td>
+        </tr>
+        <tr>
+            <td id="i8" onclick="handleMove(8)"></td>
+            <td id="i9" onclick="handleMove(9)"></td>
+            <td id="i10" onclick="handleMove(10)"></td>
+            <td id="i11" onclick="handleMove(11)"></td>
+        </tr>
+    </table>
+    <h1 id="result"></h1>
+    <button id="restartBtn" onclick="location.reload();">start a new run</button>
+
+    <script>
+        const API_KEY = "H64Ppni5Z0pVugerHDOK9k5tgb2TpTVB"; // Replace with your Giphy API key
+        const SEARCH_TERMS = ["funny", "cat", "dog", "dance", "happy", "animal", "cute", "silly", "fun", "laugh", "music", "party"]; // Multiple search terms for variety
+        let colors = [];
+        let mixColors = [];
+        let mixImages = [];
+        let firstCard = null;
+        let secondCard = null;
+        let lockBoard = false;
+
+        // Fetch GIFs from Giphy with random search term
+        async function fetchGiphyImages() {
+            const randomSearchTerm = SEARCH_TERMS[Math.floor(Math.random() * SEARCH_TERMS.length)];
+            const url = `https://api.giphy.com/v1/gifs/search?api_key=${API_KEY}&q=${randomSearchTerm}&limit=60&offset=${Math.floor(Math.random() * 100)}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            // Randomly select 6 GIFs from the fetched results
+            const shuffled = data.data.sort(() => Math.random() - 0.5);
+            return shuffled.slice(0, 6).map(gif => gif.images.fixed_height.url);
+        }
+
+        // Generate HSL colors
+        function generateHslaColors(saturation, lightness, alpha, amount) {
+            const colors = [];
+            const hueDelta = Math.trunc(360 / amount);
+
+            for (let i = 0; i < amount; i++) {
+                const hue = i * hueDelta;
+                colors.push(`hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`);
+            }
+
+            return colors;
+        }
+
+        async function buildGame() {
+    // Generate colors
+    colors = generateHslaColors(50, 50, 1.0, 6);
+
+    // Fetch GIFs
+    const giphyImages = await fetchGiphyImages();
+
+    // Create PAIRS
+    let pairs = [];
+    for (let i = 0; i < colors.length; i++) {
+        const pair = {
+            color: colors[i],
+            image: giphyImages[i]
+        };
+
+        // push twice (memory pairs)
+        pairs.push(pair);
+        pairs.push(pair);
+    }
+
+    // Shuffle PAIRS
+    pairs.sort(() => Math.random() - 0.5);
+
+    for (let i = 0; i < pairs.length; i++) {
+        const cell = document.getElementById("i" + i);
+        const { color, image } = pairs[i];
+
+        cell.dataset.color = color;
+        cell.dataset.image = image;
+        cell.style.setProperty("--color", color);
+
+        const img = document.createElement("img");
+        img.src = image;
+        cell.appendChild(img);
+    }
+}
+
+        function handleMove(index) {
+            if (lockBoard) return;
+
+            const cell = document.getElementById("i" + index);
+            if (cell.classList.contains("reveal")) return;
+
+            revealCard(cell);
+
+            if (!firstCard) {
+                firstCard = cell;
+            } else if (!secondCard) {
+                secondCard = cell;
+                checkMatch();
+            }
+        }
+
+        function revealCard(cell) {
+            cell.classList.add("reveal"); // Show GIF and change background color
+        }
+
+        function hideCard(cell) {
+            cell.classList.remove("reveal"); // Hide GIF and reset background color
+        }
+
+        function checkMatch() {
+            lockBoard = true;
+
+            if (
+                firstCard.dataset.color === secondCard.dataset.color &&
+                firstCard.dataset.image === secondCard.dataset.image
+            ) {
+                firstCard = null;
+                secondCard = null;
+                lockBoard = false;
+
+                if (document.querySelectorAll("td:not(.reveal)").length === 0) {
+                    document.getElementById("result").innerText = "You win!";
+                    document.getElementById("restartBtn").style.display = "block";
+                }
+            } else {
+                setTimeout(() => {
+                    hideCard(firstCard);
+                    hideCard(secondCard);
+                    firstCard = null;
+                    secondCard = null;
+                    lockBoard = false;
+                }, 1000);
+            }
+        }
+    </script>
+</body>
+
+</html>
